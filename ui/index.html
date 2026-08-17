@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>V3 Cluster — Green Screen Cluster</title>
+  <style>
+    :root{
+      --bg:#0a0a0b; --panel:#15151a; --panel2:#1d1d24; --line:#2a2a32;
+      --fg:#e8e8ee; --muted:#888; --accent:#7c3aed; --accent2:#22d3ee;
+      --good:#22c55e; --bad:#ef4444; --warn:#f59e0b;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+    header{position:sticky;top:0;background:rgba(10,10,11,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:16px;z-index:10}
+    header h1{margin:0;font-size:18px;font-weight:600;letter-spacing:.3px}
+    header .badge{background:var(--accent);color:#fff;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;text-transform:uppercase}
+    main{max-width:1200px;margin:0 auto;padding:24px}
+    .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:24px}
+    .tab{padding:10px 16px;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:14px;border-bottom:2px solid transparent}
+    .tab.active{color:var(--fg);border-bottom-color:var(--accent)}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:16px}
+    .panel h2{margin:0 0 16px;font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px}
+    .panel h2 .dot{width:8px;height:8px;border-radius:50%;background:var(--accent2)}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    .dropzone{border:2px dashed var(--line);border-radius:10px;padding:24px;text-align:center;color:var(--muted);cursor:pointer;transition:.15s}
+    .dropzone:hover,.dropzone.drag{border-color:var(--accent);background:rgba(124,58,237,.05)}
+    .dropzone.has{border-color:var(--good);background:rgba(34,197,94,.05);color:var(--fg)}
+    .dropzone .name{display:block;font-size:13px;margin-top:8px;font-weight:500}
+    .dropzone .size{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+    input[type=text],input[type=number],select,textarea{
+      background:var(--panel2);border:1px solid var(--line);border-radius:6px;color:var(--fg);
+      padding:8px 10px;font:inherit;width:100%
+    }
+    label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+    .field{margin-bottom:12px}
+    .btn{background:var(--accent);color:#fff;border:none;padding:10px 18px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:500;transition:.15s}
+    .btn:hover{filter:brightness(1.15)}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--fg)}
+    .btn.ghost:hover{background:var(--panel2)}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .stat{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+    .stat strong{color:var(--fg);font-size:14px}
+    .worker-card{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:12px}
+    .worker-card .name{font-weight:600;flex:1}
+    .worker-card .gpu{font-size:12px;color:var(--muted)}
+    .status-pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;text-transform:uppercase}
+    .pill-online{background:rgba(34,197,94,.15);color:var(--good)}
+    .pill-busy{background:rgba(245,158,11,.15);color:var(--warn)}
+    .pill-offline{background:rgba(136,136,136,.15);color:var(--muted)}
+    .pill-disabled{background:rgba(239,68,68,.15);color:var(--bad)}
+    .job-row{display:grid;grid-template-columns:90px 1fr 100px 80px 100px 80px;gap:12px;padding:10px;border-bottom:1px solid var(--line);align-items:center;font-size:13px}
+    .job-row.header{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+    .progress{height:4px;background:var(--panel2);border-radius:2px;overflow:hidden}
+    .progress .bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .3s}
+    .empty{text-align:center;color:var(--muted);padding:32px}
+    .toast{position:fixed;bottom:24px;right:24px;background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--accent);padding:12px 16px;border-radius:6px;max-width:400px;animation:slideIn .3s;z-index:100}
+    .toast.error{border-left-color:var(--bad)}
+    .toast.success{border-left-color:var(--good)}
+    @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+    .code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;background:var(--panel2);padding:1px 6px;border-radius:4px}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
+    .modal .dialog{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:24px;max-width:600px;width:100%;max-height:80vh;overflow:auto}
+    .log-view{background:#000;border:1px solid var(--line);border-radius:6px;padding:12px;font-family:ui-monospace,monospace;font-size:11px;color:#9cdcfe;max-height:300px;overflow:auto;white-space:pre-wrap;line-height:1.4}
+    .key-pill{background:rgba(124,58,237,.15);color:var(--accent2);padding:1px 6px;border-radius:4px;font-family:ui-monospace,monospace;font-size:11px;cursor:pointer}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🟢 V3 Cluster</h1>
+    <span class="badge">v1.0 TC01</span>
+    <div style="flex:1"></div>
+    <span class="stat" id="health-stat">⏳ Connecting…</span>
+  </header>
+
+  <main>
+    <div class="tabs">
+      <button class="tab active" data-tab="render">🎬 Render</button>
+      <button class="tab" data-tab="cluster">🖥️ Cluster</button>
+      <button class="tab" data-tab="jobs">📋 My Jobs</button>
+      <button class="tab" data-tab="settings">⚙️ Settings</button>
+    </div>
+
+    <!-- RENDER TAB -->
+    <div class="tab-pane" id="tab-render">
+      <div class="panel">
+        <h2><span class="dot"></span> 1. Input files</h2>
+        <div class="grid3">
+          <div class="dropzone" id="dz-product" data-role="product">
+            <div>📹 Product (foreground)</div>
+            <small>MP4 / MOV / WEBM</small>
+            <span class="name" id="dz-product-name"></span>
+            <span class="size" id="dz-product-size"></span>
+          </div>
+          <div class="dropzone" id="dz-bg" data-role="bg">
+            <div>🖼️ Background</div>
+            <small>MP4 / MOV / JPG / PNG</small>
+            <span class="name" id="dz-bg-name"></span>
+            <span class="size" id="dz-bg-size"></span>
+          </div>
+          <div class="dropzone" id="dz-audio" data-role="audio">
+            <div>🔊 Audio (optional)</div>
+            <small>MP3 / AAC / M4A</small>
+            <span class="name" id="dz-audio-name"></span>
+            <span class="size" id="dz-audio-size"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2><span class="dot"></span> 2. Chroma + output</h2>
+        <div class="grid2">
+          <div>
+            <div class="field">
+              <label>Key color</label>
+              <div class="row">
+                <input type="color" id="key-color" value="#00ff00" style="width:50px;height:36px;padding:2px">
+                <input type="text" id="key-color-hex" value="#00FF00" maxlength="7">
+              </div>
+            </div>
+            <div class="field">
+              <label>Similarity <span class="code" id="sim-val">0.290</span></label>
+              <input type="range" id="sim" min="0" max="1" step="0.01" value="0.29" style="width:100%">
+            </div>
+            <div class="field">
+              <label>Blend <span class="code" id="blend-val">0.040</span></label>
+              <input type="range" id="blend" min="0" max="1" step="0.01" value="0.04" style="width:100%">
+            </div>
+            <div class="field">
+              <label>Despill <span class="code" id="despill-val">0.320</span></label>
+              <input type="range" id="despill" min="0" max="1" step="0.01" value="0.32" style="width:100%">
+            </div>
+          </div>
+          <div>
+            <div class="field">
+              <label>Output size</label>
+              <div class="row">
+                <input type="number" id="width"  value="1080" min="64" max="3840" step="2">
+                <input type="number" id="height" value="1920" min="64" max="3840" step="2">
+              </div>
+            </div>
+            <div class="field">
+              <label>FPS</label>
+              <input type="number" id="fps" value="30" min="1" max="120">
+            </div>
+            <div class="field">
+              <label>Encoder</label>
+              <select id="encoder">
+                <option value="h264_nvenc">h264_nvenc (NVIDIA)</option>
+                <option value="hevc_nvenc">hevc_nvenc (NVIDIA)</option>
+                <option value="h264_qsv">h264_qsv (Intel)</option>
+                <option value="libx264">libx264 (CPU)</option>
+                <option value="libx265">libx265 (CPU)</option>
+                <option value="h264_videotoolbox">h264_videotoolbox (macOS)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Bitrate</label>
+              <input type="text" id="bitrate" value="6000k" pattern="\d+[kKmM]?">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2><span class="dot"></span> 3. Render</h2>
+        <div class="row" style="justify-content:space-between">
+          <div>
+            <button class="btn" id="render-btn" disabled>▶ Render</button>
+            <button class="btn ghost" id="reset-btn">Reset</button>
+          </div>
+          <span class="stat" id="render-status">Upload product + bg to start</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CLUSTER TAB -->
+    <div class="tab-pane" id="tab-cluster" style="display:none">
+      <div class="panel">
+        <h2><span class="dot"></span> Workers <button class="btn ghost" id="refresh-workers" style="margin-left:auto;padding:4px 10px;font-size:12px">↻ Refresh</button></h2>
+        <div id="workers-list"><div class="empty">Loading…</div></div>
+      </div>
+    </div>
+
+    <!-- JOBS TAB -->
+    <div class="tab-pane" id="tab-jobs" style="display:none">
+      <div class="panel">
+        <h2><span class="dot"></span> My jobs <button class="btn ghost" id="refresh-jobs" style="margin-left:auto;padding:4px 10px;font-size:12px">↻ Refresh</button></h2>
+        <div class="job-row header">
+          <div>Job</div><div>Status</div><div>Progress</div><div>Worker</div><div>Duration</div><div>Action</div>
+        </div>
+        <div id="jobs-list"><div class="empty">Loading…</div></div>
+      </div>
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div class="tab-pane" id="tab-settings" style="display:none">
+      <div class="panel">
+        <h2><span class="dot"></span> API credentials</h2>
+        <div class="field">
+          <label>Gateway URL</label>
+          <input type="text" id="gw-url" placeholder="https://v3.yourdomain.com">
+        </div>
+        <div class="field">
+          <label>Uploader API Key</label>
+          <div class="row">
+            <input type="password" id="api-key" placeholder="v3c_...">
+            <button class="btn ghost" id="save-settings">Save</button>
+          </div>
+        </div>
+        <p style="color:var(--muted);font-size:12px;margin-top:8px">Keys are stored in your browser's localStorage. They never leave your device except when calling the gateway.</p>
+      </div>
+      <div class="panel">
+        <h2><span class="dot"></span> Cluster stats</h2>
+        <div id="health-detail">Loading…</div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Output modal -->
+  <div class="modal" id="output-modal" style="display:none">
+    <div class="dialog">
+      <h2 style="margin-top:0">✅ Job complete</h2>
+      <video id="output-video" controls style="width:100%;max-height:50vh;background:#000"></video>
+      <div class="row" style="margin-top:16px;justify-content:space-between">
+        <span class="code" id="output-id"></span>
+        <div>
+          <a class="btn" id="output-download" download>⬇ Download</a>
+          <button class="btn ghost" id="output-close">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Job detail modal -->
+  <div class="modal" id="detail-modal" style="display:none">
+    <div class="dialog">
+      <h2 style="margin-top:0">Job <span class="code" id="detail-id"></span></h2>
+      <div class="grid2" style="margin-bottom:12px">
+        <div><label>Status</label><div id="detail-status">-</div></div>
+        <div><label>Worker</label><div id="detail-worker">-</div></div>
+      </div>
+      <label>Progress</label>
+      <div class="progress" style="margin-bottom:12px"><div class="bar" id="detail-progress-bar" style="width:0%"></div></div>
+      <label>Log</label>
+      <div class="log-view" id="detail-log">(empty)</div>
+      <div class="row" style="margin-top:16px;justify-content:flex-end">
+        <button class="btn ghost" id="detail-close">Close</button>
+        <button class="btn" id="detail-cancel" style="display:none">✕ Cancel job</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // ============================================================
+  // V3 Cluster UI — vanilla HTML/JS
+  // ============================================================
+  const $ = (id) => document.getElementById(id);
+  const $$ = (sel) => document.querySelectorAll(sel);
+
+  // ---- Settings (localStorage) ----
+  const SETTINGS_KEY = "v3cluster.ui.v1";
+  function loadSettings() {
+    try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}"); }
+    catch { return {}; }
+  }
+  function saveSettings(s) { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }
+  let ui = loadSettings();
+
+  // ---- Tabs ----
+  $$(".tab").forEach(t => t.addEventListener("click", () => {
+    $$(".tab").forEach(x => x.classList.remove("active"));
+    t.classList.add("active");
+    const name = t.dataset.tab;
+    $$(".tab-pane").forEach(p => p.style.display = "none");
+    $("tab-" + name).style.display = "";
+    if (name === "cluster") refreshWorkers();
+    if (name === "jobs") refreshJobs();
+    if (name === "settings") refreshHealth();
+  }));
+
+  // ---- API helpers ----
+  function api(path, opts = {}) {
+    const u = ui.gwUrl || "";
+    if (!u) return Promise.reject(new Error("Set gateway URL in Settings tab first"));
+    const headers = opts.headers || {};
+    if (ui.apiKey) headers["Authorization"] = "Bearer " + ui.apiKey;
+    return fetch(u + path, { ...opts, headers }).then(async r => {
+      const ct = r.headers.get("content-type") || "";
+      const body = ct.includes("json") ? await r.json() : await r.text();
+      if (!r.ok) {
+        const msg = (body && body.detail) || r.statusText;
+        throw new Error(msg);
+      }
+      return body;
+    });
+  }
+
+  // ---- Health ----
+  async function refreshHealth() {
+    try {
+      const h = await api("/api/v1/health");
+      $("health-stat").innerHTML =
+        `🟢 Gateway OK · <strong>${h.pending||0}</strong> pending · <strong>${h.running||0}</strong> running · <strong>${h.online_workers||0}</strong> workers`;
+      $("health-detail").innerHTML = `
+        <div class="grid3">
+          <div class="stat">Pending <strong>${h.pending||0}</strong></div>
+          <div class="stat">Running <strong>${h.running||0}</strong></div>
+          <div class="stat">Succeeded <strong>${h.succeeded||0}</strong></div>
+          <div class="stat">Failed <strong>${h.failed||0}</strong></div>
+          <div class="stat">Workers online <strong>${h.online_workers||0}</strong></div>
+          <div class="stat">DB <strong>${h.status}</strong></div>
+        </div>
+        <p style="color:var(--muted);margin-top:8px">${h.ts}</p>
+      `;
+    } catch (e) {
+      $("health-stat").innerHTML = `🔴 ${e.message}`;
+      $("health-detail").innerHTML = `<div class="empty">Gateway unreachable: ${e.message}</div>`;
+    }
+  }
+  setInterval(refreshHealth, 5000);
+  refreshHealth();
+
+  // ---- Drop zones ----
+  const files = { product: null, bg: null, audio: null };
+  function bindDz(id, role) {
+    const dz = $(id);
+    dz.addEventListener("click", () => {
+      const inp = document.createElement("input");
+      inp.type = "file";
+      inp.onchange = () => { if (inp.files[0]) setFile(role, inp.files[0]); };
+      inp.click();
+    });
+    dz.addEventListener("dragover", e => { e.preventDefault(); dz.classList.add("drag"); });
+    dz.addEventListener("dragleave", () => dz.classList.remove("drag"));
+    dz.addEventListener("drop", e => {
+      e.preventDefault();
+      dz.classList.remove("drag");
+      if (e.dataTransfer.files[0]) setFile(role, e.dataTransfer.files[0]);
+    });
+  }
+  function setFile(role, file) {
+    files[role] = file;
+    const id = role === "product" ? "dz-product" : role === "bg" ? "dz-bg" : "dz-audio";
+    const dz = $(id);
+    dz.classList.add("has");
+    $(id + "-name").textContent = file.name;
+    $(id + "-size").textContent = fmtSize(file.size);
+    updateRenderBtn();
+  }
+  function fmtSize(b) {
+    if (b < 1024) return b + " B";
+    if (b < 1024*1024) return (b/1024).toFixed(1) + " KB";
+    if (b < 1024*1024*1024) return (b/1024/1024).toFixed(1) + " MB";
+    return (b/1024/1024/1024).toFixed(2) + " GB";
+  }
+  bindDz("dz-product", "product");
+  bindDz("dz-bg", "bg");
+  bindDz("dz-audio", "audio");
+
+  // ---- Chroma sliders ----
+  function bindRange(id, label) {
+    const r = $(id), l = $(label);
+    const update = () => l.textContent = parseFloat(r.value).toFixed(3);
+    r.addEventListener("input", update);
+    update();
+  }
+  bindRange("sim", "sim-val");
+  bindRange("blend", "blend-val");
+  bindRange("despill", "despill-val");
+  $("key-color").addEventListener("input", e => { $("key-color-hex").value = e.target.value.toUpperCase(); });
+  $("key-color-hex").addEventListener("input", e => {
+    if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) $("key-color").value = e.target.value;
+  });
+
+  function updateRenderBtn() {
+    const ready = files.product && files.bg && ui.gwUrl && ui.apiKey;
+    $("render-btn").disabled = !ready;
+    if (!ui.gwUrl || !ui.apiKey) $("render-status").textContent = "Set gateway URL + API key in Settings tab";
+    else if (!files.product || !files.bg) $("render-status").textContent = "Upload product + bg to start";
+    else $("render-status").textContent = "Ready to render";
+  }
+
+  // ---- Settings ----
+  $("gw-url").value = ui.gwUrl || "";
+  $("api-key").value = ui.apiKey || "";
+  $("save-settings").addEventListener("click", () => {
+    ui.gwUrl = $("gw-url").value.trim().replace(/\/+$/, "");
+    ui.apiKey = $("api-key").value.trim();
+    saveSettings(ui);
+    toast("Settings saved", "success");
+    updateRenderBtn();
+    refreshHealth();
+  });
+  updateRenderBtn();
+
+  // ---- Reset ----
+  $("reset-btn").addEventListener("click", () => {
+    files.product = files.bg = files.audio = null;
+    ["product","bg","audio"].forEach(r => {
+      const id = r === "product" ? "dz-product" : r === "bg" ? "dz-bg" : "dz-audio";
+      $(id).classList.remove("has");
+      $(id + "-name").textContent = "";
+      $(id + "-size").textContent = "";
+    });
+    updateRenderBtn();
+  });
+
+  // ---- Render ----
+  $("render-btn").addEventListener("click", async () => {
+    if (!files.product || !files.bg) return;
+    $("render-btn").disabled = true;
+    $("render-status").textContent = "Uploading inputs…";
+    try {
+      // Upload each file
+      const productId = await uploadFile(files.product, "original");
+      const bgId      = await uploadFile(files.bg, "original");
+      let audioId = null;
+      if (files.audio) audioId = await uploadFile(files.audio, "original");
+
+      $("render-status").textContent = "Submitting job…";
+      const inputIds = [productId, bgId];
+      if (audioId) inputIds.push(audioId);
+
+      const settings = {
+        width:  parseInt($("width").value, 10),
+        height: parseInt($("height").value, 10),
+        fps:    parseInt($("fps").value, 10),
+        encoder: $("encoder").value,
+        bitrate: $("bitrate").value,
+        key_color: $("key-color-hex").value,
+        similarity: parseFloat($("sim").value),
+        blend: parseFloat($("blend").value),
+        despill: parseFloat($("despill").value),
+      };
+
+      const res = await api("/api/v1/jobs/render", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tc: "tc01", input_file_ids: inputIds, settings, label: files.product.name }),
+      });
+      toast("Job submitted: " + res.job_id.slice(0, 8), "success");
+      $("render-status").innerHTML = `Job <span class="code">${res.job_id.slice(0,8)}</span> · watching…`;
+      pollJob(res.job_id);
+    } catch (e) {
+      toast("Render failed: " + e.message, "error");
+      $("render-status").textContent = "Error: " + e.message;
+      $("render-btn").disabled = false;
+    }
+  });
+
+  async function uploadFile(file, role) {
+    const fd = new FormData();
+    fd.append("upload", file);
+    fd.append("role", role);
+    const r = await api("/api/v1/files/upload", { method: "POST", body: fd });
+    return r.file_id;
+  }
+
+  async function pollJob(jobId) {
+    const start = Date.now();
+    while (Date.now() - start < 10*60*1000) {
+      try {
+        const j = await api("/api/v1/jobs/" + jobId);
+        $("render-status").innerHTML =
+          `Job <span class="code">${jobId.slice(0,8)}</span> · ${j.status} · ${j.progress_pct.toFixed(0)}%`;
+        if (j.status === "succeeded") {
+          $("render-status").innerHTML =
+            `✅ Done in ${(j.duration_ms/1000).toFixed(1)}s — <a href="#" onclick="showOutput('${j.output_file_id}','${jobId}');return false">view</a>`;
+          $("render-btn").disabled = false;
+          showOutput(j.output_file_id, jobId);
+          return;
+        }
+        if (j.status === "failed" || j.status === "cancelled") {
+          $("render-status").innerHTML = `❌ ${j.status}: <span style="color:var(--bad)">${j.error_text || "(no error)"}</span>`;
+          $("render-btn").disabled = false;
+          return;
+        }
+      } catch (e) {
+        $("render-status").textContent = "Poll error: " + e.message;
+      }
+      await new Promise(r => setTimeout(r, 1000));
+    }
+    $("render-status").textContent = "⏱ Timeout (job still running — check My Jobs)";
+    $("render-btn").disabled = false;
+  }
+
+  function showOutput(fileId, jobId) {
+    const url = (ui.gwUrl || "") + "/api/v1/files/" + fileId;
+    $("output-video").src = url;
+    $("output-download").href = url;
+    $("output-download").download = jobId + ".mp4";
+    $("output-id").textContent = fileId.slice(0, 8);
+    $("output-modal").style.display = "flex";
+  }
+  $("output-close").addEventListener("click", () => $("output-modal").style.display = "none");
+
+  // ---- Workers ----
+  async function refreshWorkers() {
+    const el = $("workers-list");
+    try {
+      const res = await api("/api/v1/workers");
+      if (!res.workers || res.workers.length === 0) {
+        el.innerHTML = '<div class="empty">No workers registered yet</div>';
+        return;
+      }
+      el.innerHTML = res.workers.map(w => {
+        const pillClass = `pill-${w.status}`;
+        const age = w.heartbeat_age_sec != null ? `${w.heartbeat_age_sec}s ago` : "never";
+        return `
+          <div class="worker-card">
+            <div>
+              <div class="name">${w.label} <span class="status-pill ${pillClass}">${w.status}</span></div>
+              <div class="gpu">${w.gpu_label || "unknown GPU"} · ${w.current_jobs}/${w.max_parallel} jobs · hb ${age}</div>
+            </div>
+            <span class="code">${w.id}</span>
+          </div>
+        `;
+      }).join("");
+    } catch (e) {
+      el.innerHTML = '<div class="empty">Error: ' + e.message + '</div>';
+    }
+  }
+  $("refresh-workers").addEventListener("click", refreshWorkers);
+  setInterval(() => { if (document.querySelector(".tab.active").dataset.tab === "cluster") refreshWorkers(); }, 5000);
+
+  // ---- Jobs list ----
+  async function refreshJobs() {
+    const el = $("jobs-list");
+    try {
+      const res = await api("/api/v1/jobs?limit=50");
+      if (!res.jobs || res.jobs.length === 0) {
+        el.innerHTML = '<div class="empty">No jobs yet — submit one from the Render tab</div>';
+        return;
+      }
+      el.innerHTML = res.jobs.map(j => {
+        const dur = j.duration_ms ? `${(j.duration_ms/1000).toFixed(1)}s` : "—";
+        const worker = j.claimed_by_worker_id || "—";
+        const status = j.status;
+        return `
+          <div class="job-row" data-id="${j.id}" style="cursor:pointer">
+            <div class="code">${j.id.slice(0,8)}</div>
+            <div><strong>${status}</strong>${j.error_text ? ` — <span style="color:var(--bad)">${j.error_text.slice(0,40)}</span>` : ""}</div>
+            <div class="progress"><div class="bar" style="width:${j.progress_pct}%"></div></div>
+            <div>${worker}</div>
+            <div>${dur}</div>
+            <div><button class="btn ghost" data-action="detail">Detail</button></div>
+          </div>
+        `;
+      }).join("");
+      el.querySelectorAll("[data-action=detail]").forEach(b => b.addEventListener("click", e => {
+        e.stopPropagation();
+        const id = e.target.closest(".job-row").dataset.id;
+        showDetail(id);
+      }));
+      el.querySelectorAll(".job-row").forEach(r => r.addEventListener("click", () => showDetail(r.dataset.id)));
+    } catch (e) {
+      el.innerHTML = '<div class="empty">Error: ' + e.message + '</div>';
+    }
+  }
+  $("refresh-jobs").addEventListener("click", refreshJobs);
+
+  async function showDetail(jobId) {
+    $("detail-id").textContent = jobId.slice(0, 8) + "…" + jobId.slice(-4);
+    $("detail-modal").style.display = "flex";
+    const refresh = async () => {
+      try {
+        const j = await api("/api/v1/jobs/" + jobId);
+        $("detail-status").textContent = j.status;
+        $("detail-worker").textContent = j.claimed_by_worker_id || "—";
+        $("detail-progress-bar").style.width = j.progress_pct + "%";
+        $("detail-log").textContent = j.log_text || "(no log yet)";
+        const cancellable = ["pending","claimed","running"].includes(j.status);
+        $("detail-cancel").style.display = cancellable ? "" : "none";
+      } catch (e) {
+        $("detail-log").textContent = "Error: " + e.message;
+      }
+    };
+    await refresh();
+    const iv = setInterval(refresh, 2000);
+    $("detail-close").onclick = () => { clearInterval(iv); $("detail-modal").style.display = "none"; };
+    $("detail-cancel").onclick = async () => {
+      try { await api("/api/v1/jobs/" + jobId, { method: "DELETE" }); toast("Cancel requested", "success"); await refresh(); }
+      catch (e) { toast("Cancel failed: " + e.message, "error"); }
+    };
+  }
+
+  // ---- Toast ----
+  function toast(msg, kind = "") {
+    const t = document.createElement("div");
+    t.className = "toast " + kind;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 4000);
+  }
+  </script>
+</body>
+</html>

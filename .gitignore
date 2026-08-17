@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.env.local
+
+# Storage (never commit user data)
+storage/originals/
+storage/outputs/
+storage/temp/
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+
+# OS
+Thumbs.db
+
+# Build
+dist/
+build/
+*.spec
+
+# Test artifacts
+tests/.tmp/
+tests/fixtures/output/
+.pytest_cache/
